@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seoul Grill 199 - Delivery Management</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="logo-container">
+                <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-RWjdnXkskPQdAzWyp6DajpomlhNsH7.png" alt="Seoul Grill 199 Logo" class="logo">
+            </div>
+            <h1>Delivery Management System</h1>
+            
+            <div class="role-selector">
+                <button class="role-btn active" data-role="admin">Admin</button>
+                <button class="role-btn" data-role="rider">Delivery Personnel</button>
+            </div>
+            
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter username">
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password">
+                </div>
+                <button id="login-btn" class="primary-btn">Login</button>
+                <p id="login-error" class="error-message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        const ACCOUNTS_BIN = '67f8d1f78a456b7966871dae';
+        const ORDERS_BIN = '67efd7ca8a456b7966826626';
+        const X_ACCESS_KEY = '$2a$10$W73./QvpSBFFjn2P/D2tB.TOq17FvGpJ5oHqu4DWHc0rBw5GteM1K';
+        let selectedRole = 'admin';
+
+        // Role selector functionality
+        const roleBtns = document.querySelectorAll('.role-btn');
+        roleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                roleBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedRole = btn.getAttribute('data-role');
+            });
+        });
+
+        // Login functionality
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorElement = document.getElementById('login-error');
+            
+            if (!username || !password) {
+                errorElement.textContent = 'Please enter both username and password';
+                return;
+            }
+            
+            try {
+                errorElement.textContent = 'Authenticating...';
+                
+                // Fetch accounts data from JSONBin
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${ACCOUNTS_BIN}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Access-Key': X_ACCESS_KEY
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch account data');
+                }
+                
+                const data = await response.json();
+                const accounts = data.record;
+                
+                // Authenticate based on role
+                if (selectedRole === 'admin') {
+                    if (accounts.admin.username === username && accounts.admin.password === password) {
+                        // Store user info in session storage
+                        sessionStorage.setItem('user', JSON.stringify({
+                            role: 'admin',
+                            username: username,
+                            name: accounts.admin.name
+                        }));
+                        
+                        // Redirect to admin dashboard
+                        window.location.href = 'admin-dashboard.html';
+                    } else {
+                        errorElement.textContent = 'Invalid admin credentials';
+                    }
+                } else {
+                    // Check rider credentials
+                    const rider = accounts.rider.find(r => r.username === username && r.password === password);
+                    
+                    if (rider) {
+                        // Store user info in session storage
+                        sessionStorage.setItem('user', JSON.stringify({
+                            role: 'rider',
+                            username: username,
+                            name: rider.name,
+                            phone: rider.phone,
+                            deliveries: rider.deliveries,
+                            status: rider.status
+                        }));
+                        
+                        // Redirect to rider dashboard
+                        window.location.href = 'rider-dashboard.html';
+                    } else {
+                        errorElement.textContent = 'Invalid delivery personnel credentials';
+                    }
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorElement.textContent = 'Authentication failed. Please try again.';
+            }
+        });
+
+        // Check if user is already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            if (user) {
+                if (user.role === 'admin') {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    window.location.href = 'rider-dashboard.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
